@@ -2,9 +2,11 @@ mod snr9816;
 
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use clap::Parser;
-use log::{debug, error, info};
 use serde::Deserialize;
 use std::sync::Mutex;
+
+#[allow(unused_imports)]
+use log::{debug, error, info};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]

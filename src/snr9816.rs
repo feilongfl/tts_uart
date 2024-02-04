@@ -1,7 +1,5 @@
 use encoding_rs::GBK;
-use log::warn;
-use serde::de::Expected;
-use std::io::{Read, Write};
+use std::io::Write;
 use tokio::io::AsyncReadExt;
 use tokio_serial::{SerialPort, SerialPortBuilderExt, SerialStream};
 
@@ -10,6 +8,7 @@ pub struct SNR9816 {
 }
 
 impl SNR9816 {
+    #[allow(dead_code)]
     pub fn new(port: String, baudrate: u32) -> Self {
         SNR9816 {
             serial: tokio_serial::new(port, baudrate)
@@ -73,14 +72,17 @@ impl SNR9816 {
         self._write(self._config(format!("[{}]", text)))
     }
 
+    #[allow(dead_code)]
     pub async fn volume(&mut self, value: u8) {
         self.config(format!("v{}", value)).await
     }
 
+    #[allow(dead_code)]
     pub async fn speed(&mut self, value: u8) {
         self.config(format!("s{}", value)).await
     }
 
+    #[allow(dead_code)]
     pub async fn tone(&mut self, value: u8) {
         self.config(format!("t{}", value)).await
     }
@@ -90,14 +92,17 @@ impl SNR9816 {
         self.tts(config).await
     }
 
+    #[allow(dead_code)]
     pub async fn ring(&mut self, id: u8) {
         self._notify(format!("ring_{}", id).to_string()).await
     }
 
+    #[allow(dead_code)]
     pub async fn message(&mut self, id: u8) {
         self._notify(format!("message_{}", id).to_string()).await
     }
 
+    #[allow(dead_code)]
     pub async fn alert(&mut self, id: u8) {
         self._notify(format!("alert_{}", id).to_string()).await
     }
@@ -126,6 +131,7 @@ impl SNR9816 {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn tts(&mut self, text: String) {
         self.wait_idle().await;
         self._write(self._tts(text))
