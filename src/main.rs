@@ -1,12 +1,10 @@
-use std::io::Write;
+mod snr9816;
 
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use clap::Parser;
-use encoding_rs::GBK;
+use log::{debug, error, info};
 use serde::Deserialize;
 use std::sync::Mutex;
-use tokio_serial::{SerialPortBuilderExt, SerialStream};
-use log::{debug, error, log_enabled, info, Level};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -24,7 +22,7 @@ struct Config {
     server_port: u16,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct TtsRequest {
     text: String,
 }
@@ -33,47 +31,15 @@ async fn index() -> impl Responder {
     HttpResponse::Ok().body("OK")
 }
 
-struct GbkEncodedString {
-    buffer: Vec<u8>,
-}
-
-impl GbkEncodedString {
-    fn new(input: &str) -> Self {
-        let (encoded, _, _) = GBK.encode(input); // 使用encoding_rs进行编码
-
-        GbkEncodedString {
-            buffer: encoded.to_vec(),
-        }
-    }
-
-    fn to_snr9816(&self) -> Vec<u8> {
-        let length = self.buffer.len();
-        if length > u16::MAX as usize {
-            panic!("String too long to encode with u16 length prefix");
-        }
-
-        let mut result = Vec::with_capacity(length + 5);
-        result.push(0xfd); // head
-
-        result.push((length >> 8) as u8); // len[15:8]
-        result.push(length as u8); // len[7:0]
-
-        result.push(0x01); // command
-        result.push(0x01); // codec
-
-        result.extend_from_slice(&self.buffer);
-        result
-    }
-}
-
-async fn post_tts(
-    serial: web::Data<Mutex<SerialStream>>,
+async fn post_v1_tts_snr9816(
+    dev: web::Data<Mutex<snr9816::SNR9816>>,
     info: web::Form<TtsRequest>,
 ) -> impl Responder {
-    let str = GbkEncodedString::new(info.text.as_str());
-    let mut serial = serial.lock().expect("Failed to lock serial");
+    let mut dev = dev.lock().expect("Failed to lock serial");
     debug!("/v1/tts/snr9816[POST]: {}", info.text);
-    serial.write_all(&str.to_snr9816()).expect("Failed to write to serial port");
+    dev.volume(2).await;
+    dev.message(5).await;
+    dev.tts(info.text.clone()).await;
 
     HttpResponse::Ok().body("OK")
 }
@@ -84,16 +50,18 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     info!("open uart {}:{}", config.serial_port, config.baud_rate);
-    let port = tokio_serial::new(config.serial_port, config.baud_rate).open_native_async()?;
-    let serial = web::Data::new(Mutex::new(port));
+    let tts_dev = web::Data::new(Mutex::new(snr9816::SNR9816::new(
+        config.serial_port,
+        config.baud_rate,
+    )));
 
     info!("listen {}:{}", config.server_addr, config.server_port);
     HttpServer::new(move || {
         App::new()
-            .app_data(serial.clone())
+            .app_data(tts_dev.clone())
             .route("/", web::get().to(index))
             .route("/v1/tts/snr9816", web::get().to(index))
-            .route("/v1/tts/snr9816", web::post().to(post_tts))
+            .route("/v1/tts/snr9816", web::post().to(post_v1_tts_snr9816))
     })
     .bind((config.server_addr, config.server_port))?
     .run()
