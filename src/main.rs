@@ -49,7 +49,7 @@ async fn post_v1_tts_snr9816(
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     let config = Config::parse();
-    env_logger::init();
+    let _ = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     info!("open uart {}:{}", config.serial_port, config.baud_rate);
     let tts_dev = web::Data::new(Mutex::new(snr9816::SNR9816::new(
