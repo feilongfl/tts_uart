@@ -3,6 +3,9 @@ use std::io::Write;
 use tokio::io::AsyncReadExt;
 use tokio_serial::{SerialPort, SerialPortBuilderExt, SerialStream};
 
+#[allow(unused_imports)]
+use log::{debug, error, info};
+
 pub struct SNR9816 {
     serial: SerialStream,
 }
@@ -88,23 +91,24 @@ impl SNR9816 {
     }
 
     // 6.3.4 ring, ok=0x41
-    async fn _notify(&mut self, config: String) {
+    #[allow(dead_code)]
+    pub async fn notify(&mut self, config: String) {
         self.tts(config).await
     }
 
     #[allow(dead_code)]
     pub async fn ring(&mut self, id: u8) {
-        self._notify(format!("ring_{}", id).to_string()).await
+        self.notify(format!("ring_{}", id).to_string()).await
     }
 
     #[allow(dead_code)]
     pub async fn message(&mut self, id: u8) {
-        self._notify(format!("message_{}", id).to_string()).await
+        self.notify(format!("message_{}", id).to_string()).await
     }
 
     #[allow(dead_code)]
     pub async fn alert(&mut self, id: u8) {
-        self._notify(format!("alert_{}", id).to_string()).await
+        self.notify(format!("alert_{}", id).to_string()).await
     }
 
     async fn is_busy(&mut self) -> bool {
@@ -117,7 +121,7 @@ impl SNR9816 {
         let my_duration = tokio::time::Duration::from_millis(10);
         let _ = tokio::time::timeout(my_duration, reader.read(&mut buffer)).await;
 
-        println!("busy={}", buffer[0]);
+        debug!("busy={}", buffer[0]);
         if buffer[0] == 0x4f {
             return false;
         } else {
